@@ -13,12 +13,31 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, FontFamily } from "@/constants/theme";
+import { getProduceImage } from "@/features/produce/produce-images";
 import { requireSupabase } from "@/lib/supabase/client";
 
 const icons = {
   back: require("../../../assets/images/search/back.svg"),
   search: require("../../../assets/images/search/search-gray.svg"),
+  // 사진이 아직 없는 품목에 보여주는 기본 아이콘
+  noPhoto: require("../../../assets/images/home/nav-cart.png"),
 };
+
+function ProduceThumb({ itemName }: { itemName: string }) {
+  const photo = getProduceImage(itemName);
+  if (photo) {
+    return <Image source={photo} style={styles.thumb} contentFit="cover" />;
+  }
+  return (
+    <View style={styles.thumbEmpty}>
+      <Image
+        source={icons.noPhoto}
+        style={styles.thumbEmptyIcon}
+        contentFit="contain"
+      />
+    </View>
+  );
+}
 
 type SearchResult = {
   item_name: string;
@@ -176,7 +195,7 @@ export default function SearchScreen() {
               style={styles.card}
               onPress={() => saveRecent(item.item_name)}
             >
-              <View style={styles.thumb} />
+              <ProduceThumb itemName={item.item_name} />
               <View style={styles.info}>
                 <View style={styles.nameBlock}>
                   <Text style={styles.name} numberOfLines={1}>
@@ -288,12 +307,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: Colors.white,
   },
-  thumb: {
+  thumb: { width: 80, height: 80, borderRadius: 5 },
+  thumbEmpty: {
     width: 80,
     height: 80,
     borderRadius: 5,
-    backgroundColor: "#bcbcbc",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f5f5f5",
   },
+  thumbEmptyIcon: { width: 28, height: 28 },
   info: { flex: 1, gap: 12 },
   nameBlock: { gap: 10 },
   name: {

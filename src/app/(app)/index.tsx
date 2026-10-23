@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, FontFamily } from "@/constants/theme";
 import { useAuth } from "@/features/auth/auth-provider";
+import { getProduceImage } from "@/features/produce/produce-images";
 
 const icons = {
   search: require("../../../assets/images/home/search.png"),
@@ -32,77 +33,66 @@ const TODAY_ITEMS = [
   {
     id: "1",
     name: "딸기",
-    image: require("../../../assets/images/food/딸기.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "2",
     name: "바나나",
-    image: require("../../../assets/images/food/바나나.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "3",
     name: "감자",
-    image: require("../../../assets/images/food/감자.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "4",
     name: "포도",
-    image: require("../../../assets/images/food/포도.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "5",
     name: "레몬",
-    image: require("../../../assets/images/food/레몬.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "6",
     name: "브로콜리",
-    image: require("../../../assets/images/food/브로콜리.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "7",
     name: "상추",
-    image: require("../../../assets/images/food/상추.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "8",
     name: "양상추",
-    image: require("../../../assets/images/food/양상추.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "9",
     name: "깻잎",
-    image: require("../../../assets/images/food/깻잎.png"),
     price: "1,200원",
     change: "3%",
   },
   {
     id: "10",
-    name: "감",
-    image: require("../../../assets/images/food/감.png"),
+    name: "단감",
     price: "1,200원",
     change: "3%",
   },
   {
     id: "11",
     name: "용과",
-    image: require("../../../assets/images/food/용과.png"),
     price: "1,200원",
     change: "3%",
   },
@@ -189,7 +179,7 @@ export default function HomeScreen() {
           {TODAY_ITEMS.map((item) => (
             <View key={item.id} style={styles.priceCard}>
               <Image
-                source={item.image}
+                source={getProduceImage(item.name)}
                 style={styles.thumb}
                 contentFit="cover"
               />
