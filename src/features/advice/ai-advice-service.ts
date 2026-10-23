@@ -7,6 +7,8 @@ import {
   type PurchaseAdvice,
 } from './purchase-advice';
 
+const AI_ADVICE_TIMEOUT_MS = 20_000;
+
 export type AiPurchaseAdvice = PurchaseAdvice & {
   source: 'gemini' | 'rules';
 };
@@ -41,6 +43,8 @@ export async function createAiShoppingAdvice({
   const base = await createShoppingAdvice({ purchaseItems, prices });
   const fallback: AiPurchaseAdvice = { ...base.advice, source: 'rules' };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_ADVICE_TIMEOUT_MS);
   try {
     const { data, error } = await requireSupabase().functions.invoke('purchase-advice', {
       body: {
@@ -51,6 +55,7 @@ export async function createAiShoppingAdvice({
           dataAsOf: base.advice.dataAsOf,
         },
       },
+      signal: controller.signal,
     });
     if (error || !isAiAdviceText(data?.advice)) return { ...base, advice: fallback };
 
@@ -64,6 +69,8 @@ export async function createAiShoppingAdvice({
     };
   } catch {
     return { ...base, advice: fallback };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

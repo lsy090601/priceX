@@ -3,6 +3,8 @@ declare const Deno: {
   serve(handler: (request: Request) => Response | Promise<Response>): void;
 };
 
+const GEMINI_TIMEOUT_MS = 15_000;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -55,6 +57,7 @@ Deno.serve(async (request) => {
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       headers: {
         "x-goog-api-key": apiKey,
         "Content-Type": "application/json",
@@ -86,15 +89,27 @@ Deno.serve(async (request) => {
             required: ["title", "summary", "actions"],
             additionalProperties: false,
           },
-          maxOutputTokens: 500,
+          maxOutputTokens: 1024,
         },
       }),
     },
-  );
+  ).catch((error: unknown) => {
+    console.error("Gemini request timed out or failed", model, error);
+    return null;
+  });
+  if (!geminiResponse) {
+    return jsonResponse({ error: "AI request timed out" }, 504);
+  }
 
-  const responseBody = (await geminiResponse.json()) as {
+  let responseBody: {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
+  try {
+    responseBody = await geminiResponse.json();
+  } catch {
+    console.error("Gemini returned a non-JSON response", geminiResponse.status);
+    return jsonResponse({ error: "AI advice generation failed" }, 502);
+  }
   if (!geminiResponse.ok) {
     console.error("Gemini request failed", geminiResponse.status, responseBody);
     return jsonResponse({ error: "AI advice generation failed" }, 502);
