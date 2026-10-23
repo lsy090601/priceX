@@ -5,7 +5,7 @@ from __future__ import annotations
 import calendar
 from dataclasses import dataclass
 from datetime import date
-from statistics import mean
+from statistics import mean, median
 
 
 @dataclass(frozen=True)
@@ -71,4 +71,33 @@ def forecast_next_month(series: list[MonthlyPrice]) -> PriceForecast | None:
         observation_count=len(recent),
         training_start=recent[0].month,
         training_end=recent[-1].month,
+    )
+
+
+def forecast_from_seasonality(
+    history: list[MonthlyPrice], current: MonthlyPrice
+) -> PriceForecast | None:
+    """Apply the median historical same-month change to the current price."""
+    monthly = {item.month: item.average_price for item in history}
+    changes: list[tuple[date, date, float]] = []
+    for month, price in sorted(monthly.items()):
+        if month.month != current.month.month or price <= 0:
+            continue
+        following = _next_month(month)
+        if following in monthly:
+            changes.append((month, following, (monthly[following] - price) / price))
+    if len(changes) < 3:
+        return None
+
+    rate = min(max(median(change[2] for change in changes), -0.20), 0.20)
+    predicted = round(current.average_price * (1 + rate))
+    direction = "up" if rate > 0.02 else "down" if rate < -0.02 else "stable"
+    return PriceForecast(
+        predicted_for=_next_month(current.month),
+        predicted_price=predicted,
+        direction=direction,
+        confidence="medium" if len(changes) >= 4 else "low",
+        observation_count=len(changes),
+        training_start=changes[0][0],
+        training_end=changes[-1][1],
     )

@@ -1,7 +1,12 @@
 import unittest
 from datetime import date
 
-from pricex.forecast import MonthlyPrice, aggregate_monthly, forecast_next_month
+from pricex.forecast import (
+    MonthlyPrice,
+    aggregate_monthly,
+    forecast_from_seasonality,
+    forecast_next_month,
+)
 
 
 class ForecastTest(unittest.TestCase):
@@ -33,6 +38,38 @@ class ForecastTest(unittest.TestCase):
             MonthlyPrice(date(2026, 9, 1), 1200),
         ])
         self.assertIsNone(result)
+
+    def test_uses_historical_seasonality_when_recent_months_are_missing(self):
+        history = []
+        for year, september, october in (
+            (2020, 1000, 1100),
+            (2021, 1200, 1320),
+            (2022, 900, 990),
+            (2023, 1500, 1650),
+        ):
+            history.extend([
+                MonthlyPrice(date(year, 9, 1), september),
+                MonthlyPrice(date(year, 10, 1), october),
+            ])
+        result = forecast_from_seasonality(
+            history, MonthlyPrice(date(2026, 9, 1), 2000)
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(2200, result.predicted_price)
+        self.assertEqual("up", result.direction)
+        self.assertEqual("medium", result.confidence)
+
+    def test_requires_three_seasonal_transitions(self):
+        history = [
+            MonthlyPrice(date(2022, 9, 1), 1000),
+            MonthlyPrice(date(2022, 10, 1), 1100),
+            MonthlyPrice(date(2023, 9, 1), 1000),
+            MonthlyPrice(date(2023, 10, 1), 1100),
+        ]
+        self.assertIsNone(
+            forecast_from_seasonality(history, MonthlyPrice(date(2026, 9, 1), 2000))
+        )
 
 
 if __name__ == "__main__":
