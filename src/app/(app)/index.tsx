@@ -1,6 +1,8 @@
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TabBar } from "@/components/tab-bar";
 import { Colors, FontFamily } from "@/constants/theme";
+import {
+  fetchCartSummary,
+  fetchTodayPrices,
+  type CartSummary,
+  type TodayPrice,
+} from "@/features/home/home-service";
 import { getProduceImage } from "@/features/produce/produce-images";
 
 const icons = {
@@ -19,86 +27,45 @@ const icons = {
   chevronGray: require("../../../assets/images/home/chevron-gray.png"),
   chevronGreen: require("../../../assets/images/home/chevron-green.png"),
   arrowUp: require("../../../assets/images/home/arrow-up.png"),
+  arrowDown: require("../../../assets/images/product/arrow-down.svg"),
   mascot: require("../../../assets/images/home/ai-mascot.png"),
   priceInput: require("../../../assets/images/home/price-input.png"),
 };
 
-// TODO: 실제 가격 데이터 연동 전까지 쓰는 임시 데이터 (Figma 160:562)
-const TODAY_ITEMS = [
-  {
-    id: "1",
-    name: "딸기",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "2",
-    name: "바나나",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "3",
-    name: "감자",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "4",
-    name: "포도",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "5",
-    name: "레몬",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "6",
-    name: "브로콜리",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "7",
-    name: "상추",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "8",
-    name: "양상추",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "9",
-    name: "깻잎",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "10",
-    name: "단감",
-    price: "1,200원",
-    change: "3%",
-  },
-  {
-    id: "11",
-    name: "용과",
-    price: "1,200원",
-    change: "3%",
-  },
-];
+const won = (value: number) => `${value.toLocaleString("ko-KR")}원`;
 
 /**
- * Figma 160:562 — 홈 (임시 구현)
- * 하단 탭은 이 화면 안에 임시로 그렸습니다. 다른 탭 화면이 생기면 Tabs 레이아웃으로 옮기세요.
+ * Figma 160:562 — 홈
+ * 오늘의 가격 카드는 실제 가격 데이터, AI 장보기 추천 카드는 내 장바구니로 계산합니다.
  */
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const [today, setToday] = useState<TodayPrice[] | null>(null);
+  const [cart, setCart] = useState<CartSummary | null>(null);
+
+  // 홈에 들어올 때마다 새로 불러옵니다. (장바구니를 바꾸고 돌아온 경우 등)
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      fetchTodayPrices()
+        .then((items) => !cancelled && setToday(items))
+        .catch(() => !cancelled && setToday([]));
+      fetchCartSummary()
+        .then((summary) => !cancelled && setCart(summary))
+        .catch(() => !cancelled && setCart(null));
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const aiText = !cart
+    ? "장바구니에 상품을 담으면 최적 구매 조합을 알려드려요"
+    : cart.itemCount === 0
+      ? "장바구니에 상품을 담으면 최적 구매 조합을 알려드려요"
+      : cart.savings > 0
+        ? `예상 지출 ${won(cart.total)}, 최대 ${won(cart.savings)} 절약 가능`
+        : `예상 지출 ${won(cart.total)}`;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -138,7 +105,11 @@ export default function HomeScreen() {
         <View style={styles.sectionHead}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Today’s PRICE!</Text>
-            <Pressable style={styles.more} hitSlop={8}>
+            <Pressable
+              style={styles.more}
+              onPress={() => router.push("/search")}
+              hitSlop={8}
+            >
               <Text style={styles.moreText}>더보기</Text>
               <Image
                 source={icons.chevronGray}
@@ -158,9 +129,9 @@ export default function HomeScreen() {
           style={styles.cardScroll}
           contentContainerStyle={styles.cardList}
         >
-          {TODAY_ITEMS.map((item) => (
+          {(today ?? []).map((item) => (
             <Pressable
-              key={item.id}
+              key={item.name}
               style={styles.priceCard}
               onPress={() =>
                 router.push({
@@ -178,21 +149,39 @@ export default function HomeScreen() {
                 <View style={styles.nameBlock}>
                   <Text style={styles.itemName}>{item.name}</Text>
                   <View style={styles.priceRow}>
-                    <Text style={styles.itemPrice}>{item.price}</Text>
-                    <Text style={styles.avg}>평균</Text>
+                    <Text style={styles.itemPrice}>{won(item.price)}</Text>
+                    <Text style={styles.avg}>{item.unitLabel} 평균</Text>
                   </View>
                 </View>
                 <View style={styles.changeRow}>
-                  <Image
-                    source={icons.arrowUp}
-                    style={styles.arrow}
-                    contentFit="contain"
-                  />
-                  <Text style={styles.changeText}>{item.change}</Text>
+                  {item.changePct !== null && item.changePct !== 0 ? (
+                    <>
+                      <Image
+                        source={item.changePct > 0 ? icons.arrowUp : icons.arrowDown}
+                        style={styles.arrow}
+                        contentFit="contain"
+                      />
+                      <Text
+                        style={[
+                          styles.changeText,
+                          item.changePct < 0 && styles.changeDown,
+                        ]}
+                      >
+                        {Math.abs(item.changePct)}%
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.avg}>변동 없음</Text>
+                  )}
                 </View>
               </View>
             </Pressable>
           ))}
+          {today === null && (
+            <View style={styles.cardLoading}>
+              <ActivityIndicator color={Colors.primary} />
+            </View>
+          )}
         </ScrollView>
 
         <View style={styles.inputCard}>
@@ -209,12 +198,22 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          <Pressable style={styles.inputButton} accessibilityRole="button">
+          <Pressable
+            style={styles.inputButton}
+            onPress={() => router.push("/field-price")}
+            accessibilityRole="button"
+          >
             <Text style={styles.inputButtonText}>가격 입력하기</Text>
           </Pressable>
         </View>
 
-        <Pressable style={styles.aiCard} accessibilityRole="button">
+        <Pressable
+          style={styles.aiCard}
+          onPress={() =>
+            router.push(cart && cart.itemCount > 0 ? "/plan" : "/cart")
+          }
+          accessibilityRole="button"
+        >
           <Image
             source={icons.mascot}
             style={styles.mascot}
@@ -232,9 +231,7 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.aiDesc}>
-              예상 지출 2,5000원, 최대 3,000원 절약 가능
-            </Text>
+            <Text style={styles.aiDesc}>{aiText}</Text>
           </View>
         </Pressable>
 
@@ -331,7 +328,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#bcbcbc",
   },
-  priceInfo: { width: 90, gap: 16 },
+  priceInfo: { minWidth: 90, maxWidth: 140, gap: 16 },
   nameBlock: { gap: 5 },
   itemName: {
     fontFamily: FontFamily.medium,
@@ -353,12 +350,14 @@ const styles = StyleSheet.create({
   },
   changeRow: { flexDirection: "row", alignItems: "flex-start", gap: 4 },
   arrow: { width: 16, height: 16 },
+  cardLoading: { width: 140, height: 200, alignItems: "center", justifyContent: "center" },
   changeText: {
     fontFamily: FontFamily.medium,
     fontSize: 13,
     fontWeight: "500",
     color: "#ff3333",
   },
+  changeDown: { color: "#3351ff" },
 
   inputCard: {
     marginTop: 32,

@@ -144,7 +144,10 @@ export default function ProductScreen() {
           <Pressable
             style={styles.trendCard}
             onPress={() =>
-              Alert.alert("가격 추이", "평균 가격 추이 그래프는 준비 중이에요.")
+              router.push({
+                pathname: "/trend",
+                params: { kind: detail.kind, name: detail.name },
+              })
             }
           >
             <View style={styles.trendIconBox}>

@@ -50,8 +50,15 @@ export async function loadPlanSources(items: CartItem[]): Promise<PlanSource[]> 
   );
 }
 
-function cheapest(offers: StoreOffer[], type: StoreType): StoreOffer | undefined {
-  return offers.find((o) => o.storeType === type); // offers 는 싼 순서
+/** 판매점 종류. "any" 는 종류와 상관없이 가장 싼 곳 */
+export type PlanStoreType = StoreType | "any";
+
+function cheapest(
+  offers: StoreOffer[],
+  type: PlanStoreType,
+): StoreOffer | undefined {
+  // offers 는 싼 순서
+  return type === "any" ? offers[0] : offers.find((o) => o.storeType === type);
 }
 
 /**
@@ -59,7 +66,7 @@ function cheapest(offers: StoreOffer[], type: StoreType): StoreOffer | undefined
  * - 신선식품: 판매점별 가격이 없어서 평균 가격 기준
  * 가격을 모르는 품목은 합계에서 빼고 따로 표시합니다.
  */
-export function computePlan(sources: PlanSource[], type: StoreType): Plan {
+export function computePlan(sources: PlanSource[], type: PlanStoreType): Plan {
   const lines: PlanLine[] = sources.map(({ item, detail }) => {
     const base = {
       key: String(item.id),
