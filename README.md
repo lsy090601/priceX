@@ -84,3 +84,29 @@ supabase/drafts/            # 실행 전 검토할 SQL 초안
 - `SUPABASE_SECRET_KEY`
 
 현재 참가격 API 주소는 2026년 9월 자료에 고정되어 있으므로 새 월 자료가 발행되면 `CHAMGAGE_API_URL`을 갱신해야 합니다.
+
+## AI 구매 조언
+
+AI 조언은 `Expo 앱 → Supabase Edge Function → Gemini API` 순서로 호출합니다.
+Gemini 키는 앱 환경 변수에 넣지 않고 Supabase 프로젝트의 Edge Function Secret으로 설정합니다.
+
+```bash
+npx supabase secrets set GEMINI_API_KEY=your_key GEMINI_MODEL=gemini-3.8-flash
+npx supabase functions deploy purchase-advice
+```
+
+함수가 배포되지 않았거나 Gemini 호출에 실패하면 앱은 계산 기반 조언을 대신 표시합니다. AI는 서버에서 계산한 가격·비율·판매점·절약액을 전달받아 설명만 작성합니다.
+
+## 가격 이력과 예측
+
+상품별 평균가격 이력은 매장별 최신 가격과 분리해 `product_price_history`에 저장합니다.
+공공데이터포털에서 받은 CP949 CSV는 다음 명령으로 검증한 뒤 중복 없이 업로드합니다.
+
+```bash
+python scripts/import_price_history.py "path/to/한국소비자원_생필품 가격 정보 상품별 통계_20241220.csv"
+```
+
+최근 월 자료가 연속되면 최근 3개월의 월평균 변화량을 사용합니다. 중간 기간이 누락된 경우에는
+2020~2024년의 동일 월→다음 월 변동률 중앙값을 최신 가격에 적용하는 계절성 예측을 사용합니다.
+과거 전환 사례가 3회 미만이면 예측하지 않으며, 예측 변화는 최대 ±20%로 제한합니다. LSTM은 24개월 이상의
+연속 자료가 있고 이동평균 기준선보다 검증 오차가 10% 이상 낮을 때만 도입합니다.

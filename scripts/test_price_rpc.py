@@ -43,9 +43,32 @@ def main():
     assert prices == sorted(prices, key=lambda row: (row["price"], row["store_name"]))
     assert len({row["inspected_at"] for row in prices}) == 1
 
+    selected_products = [item["product_name"] for item in products[:2]]
+    recommendation = call_rpc(
+        "recommend_purchase_plan",
+        {
+            "purchase_items": [
+                {"product_name": selected_products[0], "quantity": 2},
+                {"product_name": selected_products[1], "quantity": 1},
+            ]
+        },
+    )
+    assert recommendation["is_complete"] is True
+    assert len(recommendation["items"]) == 2
+    assert recommendation["multi_store_total"] == sum(
+        item["subtotal"] for item in recommendation["items"]
+    )
+    if recommendation["single_store"]:
+        assert recommendation["single_store"]["total"] >= recommendation["multi_store_total"]
+        assert recommendation["savings"] == (
+            recommendation["single_store"]["total"]
+            - recommendation["multi_store_total"]
+        )
+
     print(
         f"RPC check passed: {len(products)} products, "
-        f"{len(prices)} stores for {products[0]['product_name']}"
+        f"{len(prices)} stores for {products[0]['product_name']}, "
+        f"purchase plan total {recommendation['multi_store_total']:,}원"
     )
 
 
