@@ -1,7 +1,6 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,8 +9,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { TabBar } from "@/components/tab-bar";
 import { Colors, FontFamily } from "@/constants/theme";
-import { useAuth } from "@/features/auth/auth-provider";
 import { getProduceImage } from "@/features/produce/produce-images";
 
 const icons = {
@@ -22,10 +21,6 @@ const icons = {
   arrowUp: require("../../../assets/images/home/arrow-up.png"),
   mascot: require("../../../assets/images/home/ai-mascot.png"),
   priceInput: require("../../../assets/images/home/price-input.png"),
-  navHome: require("../../../assets/images/home/nav-home.png"),
-  navChecklist: require("../../../assets/images/home/nav-checklist.png"),
-  navCart: require("../../../assets/images/home/nav-cart.png"),
-  navUser: require("../../../assets/images/home/nav-user.png"),
 };
 
 // TODO: 실제 가격 데이터 연동 전까지 쓰는 임시 데이터 (Figma 160:562)
@@ -104,19 +99,6 @@ const TODAY_ITEMS = [
  */
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut } = useAuth();
-
-  // 마이페이지가 아직 없어서, 임시로 눌렀을 때 로그아웃을 물어봅니다.
-  const handleMyPage = () => {
-    Alert.alert("마이페이지", "마이페이지는 준비 중이에요. 로그아웃할까요?", [
-      { text: "취소", style: "cancel" },
-      {
-        text: "로그아웃",
-        style: "destructive",
-        onPress: () => void signOut().catch(() => {}),
-      },
-    ]);
-  };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -177,7 +159,16 @@ export default function HomeScreen() {
           contentContainerStyle={styles.cardList}
         >
           {TODAY_ITEMS.map((item) => (
-            <View key={item.id} style={styles.priceCard}>
+            <Pressable
+              key={item.id}
+              style={styles.priceCard}
+              onPress={() =>
+                router.push({
+                  pathname: "/product",
+                  params: { kind: "produce", name: item.name },
+                })
+              }
+            >
               <Image
                 source={getProduceImage(item.name)}
                 style={styles.thumb}
@@ -200,7 +191,7 @@ export default function HomeScreen() {
                   <Text style={styles.changeText}>{item.change}</Text>
                 </View>
               </View>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
 
@@ -263,66 +254,8 @@ export default function HomeScreen() {
         </Pressable>
       </ScrollView>
 
-      <View
-        style={[
-          styles.tabBar,
-          { paddingBottom: Math.max(insets.bottom, 12) + 18 },
-        ]}
-      >
-        <TabItem
-          label="홈"
-          icon={icons.navHome}
-          active
-          iconSize={{ width: 32, height: 30 }}
-        />
-        <TabItem
-          label="체크리스트"
-          icon={icons.navChecklist}
-          iconSize={{ width: 30, height: 30 }}
-        />
-        <TabItem
-          label="장바구니"
-          icon={icons.navCart}
-          iconSize={{ width: 25, height: 25 }}
-        />
-        <TabItem
-          label="마이페이지"
-          icon={icons.navUser}
-          iconSize={{ width: 30, height: 30 }}
-          onPress={handleMyPage}
-        />
-      </View>
+      <TabBar active="home" />
     </View>
-  );
-}
-
-function TabItem({
-  label,
-  icon,
-  active,
-  iconSize,
-  onPress,
-}: {
-  label: string;
-  icon: number;
-  active?: boolean;
-  iconSize: { width: number; height: number };
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable
-      style={styles.tabItem}
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: !!active }}
-    >
-      <View style={styles.tabIconBox}>
-        <Image source={icon} style={iconSize} contentFit="contain" />
-      </View>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -507,17 +440,4 @@ const styles = StyleSheet.create({
     width: 186,
   },
 
-  tabBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 15,
-    paddingHorizontal: 35,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-    backgroundColor: Colors.white,
-  },
-  tabItem: { width: 52, alignItems: "center", gap: 8 },
-  tabIconBox: { height: 30, alignItems: "center", justifyContent: "center" },
-  tabLabel: { fontFamily: FontFamily.regular, fontSize: 12, color: "#bbbbbb" },
-  tabLabelActive: { color: Colors.primary },
 });

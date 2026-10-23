@@ -151,6 +151,12 @@ export default function SearchScreen() {
     };
   }, [keyword]);
 
+  // 검색 결과를 누르면 상품 상세(가격 추이)로 이동합니다.
+  const openProduct = (kind: "produce" | "packaged", name: string) => {
+    saveRecent(kind === "packaged" ? keyword : name);
+    router.push({ pathname: "/product", params: { kind, name } });
+  };
+
   const saveRecent = (word: string) => {
     if (!word) return;
     setRecent((prev) =>
@@ -227,7 +233,7 @@ export default function SearchScreen() {
             return (
               <Pressable
                 style={styles.card}
-                onPress={() => saveRecent(keyword)}
+                onPress={() => openProduct("packaged", item.product_name)}
               >
                 <EmptyThumb />
                 <View style={styles.info}>
@@ -260,7 +266,7 @@ export default function SearchScreen() {
           return (
             <Pressable
               style={styles.card}
-              onPress={() => saveRecent(item.item_name)}
+              onPress={() => openProduct("produce", item.item_name)}
             >
               <ProduceThumb itemName={item.item_name} />
               <View style={styles.info}>
