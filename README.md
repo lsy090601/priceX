@@ -84,3 +84,15 @@ supabase/drafts/            # 실행 전 검토할 SQL 초안
 - `SUPABASE_SECRET_KEY`
 
 현재 참가격 API 주소는 2026년 9월 자료에 고정되어 있으므로 새 월 자료가 발행되면 `CHAMGAGE_API_URL`을 갱신해야 합니다.
+
+## AI 구매 조언
+
+AI 조언은 `Expo 앱 → Supabase Edge Function → OpenAI Responses API` 순서로 호출합니다.
+OpenAI 키는 앱 환경 변수에 넣지 않고 Supabase 프로젝트의 Edge Function Secret으로 설정합니다.
+
+```bash
+npx supabase secrets set OPENAI_API_KEY=your_key OPENAI_MODEL=gpt-6-luna
+npx supabase functions deploy purchase-advice
+```
+
+함수가 배포되지 않았거나 OpenAI 호출에 실패하면 앱은 계산 기반 조언을 대신 표시합니다. AI는 서버에서 계산한 가격·비율·판매점·절약액을 전달받아 설명만 작성합니다.
