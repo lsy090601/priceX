@@ -23,11 +23,7 @@ const icons = {
   noPhoto: require("../../../assets/images/home/nav-cart.png"),
 };
 
-function ProduceThumb({ itemName }: { itemName: string }) {
-  const photo = getProduceImage(itemName);
-  if (photo) {
-    return <Image source={photo} style={styles.thumb} contentFit="cover" />;
-  }
+function EmptyThumb() {
   return (
     <View style={styles.thumbEmpty}>
       <Image
@@ -39,7 +35,15 @@ function ProduceThumb({ itemName }: { itemName: string }) {
   );
 }
 
-type SearchResult = {
+function ProduceThumb({ itemName }: { itemName: string }) {
+  const photo = getProduceImage(itemName);
+  if (photo) {
+    return <Image source={photo} style={styles.thumb} contentFit="cover" />;
+  }
+  return <EmptyThumb />;
+}
+
+type ProduceRow = {
   item_name: string;
   variety_name: string;
   grade_name: string;
@@ -49,6 +53,24 @@ type SearchResult = {
   price: number;
   change_pct_1w: number | null;
 };
+
+// 참가격 가공식품: 판매점별 가격이 있다.
+type PackagedRow = {
+  product_name: string;
+  inspected_at: string;
+  store_count: number;
+  min_price: number;
+  average_price: number;
+};
+
+type SearchResult =
+  | ({ kind: "produce" } & ProduceRow)
+  | ({ kind: "packaged" } & PackagedRow);
+
+const resultKey = (item: SearchResult) =>
+  item.kind === "produce"
+    ? `produce-${item.item_name}`
+    : `packaged-${item.product_name}`;
 
 // 조사일이 이보다 오래된 품목(제철이 아닌 과일 등)은 날짜를 같이 보여줍니다.
 const STALE_DAYS = 14;
@@ -94,18 +116,32 @@ export default function SearchScreen() {
 
     let cancelled = false;
     const timer = setTimeout(async () => {
-      let failed = false;
-      let rows: SearchResult[] = [];
-      try {
-        const { data, error: rpcError } = await requireSupabase().rpc(
-          "search_produce_prices",
-          { search_query: keyword, result_limit: 20 },
-        );
-        if (rpcError) failed = true;
-        else rows = (data ?? []) as SearchResult[];
-      } catch {
-        failed = true;
-      }
+      const supabase = requireSupabase();
+      // 신선식품과 가공식품을 같이 찾는다. 한쪽만 실패해도 나머지는 보여준다.
+      const [produce, packaged] = await Promise.allSettled([
+        supabase.rpc("search_produce_prices", {
+          search_query: keyword,
+          result_limit: 20,
+        }),
+        supabase.rpc("search_price_products", {
+          search_query: keyword,
+          result_limit: 20,
+        }),
+      ]);
+      const ok = <T,>(
+        r: PromiseSettledResult<{ data: T | null; error: unknown }>,
+      ) =>
+        r.status === "fulfilled" && !r.value.error ? (r.value.data ?? []) : null;
+      const produceRows = ok<ProduceRow[]>(produce);
+      const packagedRows = ok<PackagedRow[]>(packaged);
+      const failed = produceRows === null && packagedRows === null;
+      const rows: SearchResult[] = [
+        ...(produceRows ?? []).map((r) => ({ kind: "produce" as const, ...r })),
+        ...(packagedRows ?? []).map((r) => ({
+          kind: "packaged" as const,
+          ...r,
+        })),
+      ];
       if (!cancelled) setDone({ keyword, results: rows, failed });
     }, 300);
 
@@ -183,10 +219,41 @@ export default function SearchScreen() {
 
       <FlatList
         data={results}
-        keyExtractor={(item) => item.item_name}
+        keyExtractor={resultKey}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
+          if (item.kind === "packaged") {
+            return (
+              <Pressable
+                style={styles.card}
+                onPress={() => saveRecent(keyword)}
+              >
+                <EmptyThumb />
+                <View style={styles.info}>
+                  <View style={styles.nameBlock}>
+                    <Text style={styles.name} numberOfLines={2}>
+                      {item.product_name}
+                    </Text>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.price}>
+                        {item.average_price.toLocaleString("ko-KR")}원
+                      </Text>
+                      <Text style={styles.avg}>평균</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.stale}>
+                    최저 {item.min_price.toLocaleString("ko-KR")}원 · 판매점{" "}
+                    {item.store_count}곳
+                  </Text>
+                  <Text style={styles.stale}>
+                    {formatDate(item.inspected_at)} 기준
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }
+
           const change = item.change_pct_1w;
           const up = change !== null && change > 0;
           const down = change !== null && change < 0;
