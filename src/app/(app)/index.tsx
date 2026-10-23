@@ -256,6 +256,21 @@ export default function HomeScreen() {
             </Text>
           </View>
         </Pressable>
+
+        {/* TODO: 피그마에 예측 화면 입구가 정해지면 그 위치로 옮기기 */}
+        <Pressable
+          style={styles.forecastLink}
+          onPress={() => router.push("/forecast")}
+          accessibilityRole="button"
+          hitSlop={8}
+        >
+          <Text style={styles.aiLinkText}>가격 예측 보기</Text>
+          <Image
+            source={icons.chevronGreen}
+            style={styles.chevron}
+            contentFit="contain"
+          />
+        </Pressable>
       </ScrollView>
 
       <View
@@ -486,6 +501,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: 12,
     color: Colors.primary,
+  },
+  forecastLink: {
+    marginTop: 20,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
   },
   aiDesc: {
     fontFamily: FontFamily.medium,
