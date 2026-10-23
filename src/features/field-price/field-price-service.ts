@@ -56,6 +56,27 @@ type PackagedRow = {
   average_price: number;
 };
 
+/**
+ * 신선식품 가격을 찾습니다. 이름이 정확히 같은 품목을 먼저 찾고,
+ * 없으면 "국내산 양파", "양파 1.5kg"처럼 앞뒤에 말이 붙은 경우 단어별로 다시 찾습니다.
+ */
+async function findProduce(name: string): Promise<ProduceRow | undefined> {
+  const supabase = requireSupabase();
+  const words = name
+    .split(/[\s()[\],/·]+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0 && w !== name);
+  for (const query of [name, ...words]) {
+    const { data } = await supabase.rpc("search_produce_prices", {
+      search_query: query,
+      result_limit: 50,
+    });
+    const row = ((data ?? []) as ProduceRow[]).find((r) => r.item_name === query);
+    if (row) return row;
+  }
+  return undefined;
+}
+
 /** 입력한 가격을 평균 가격과 비교합니다. (신선식품은 단위를 맞춰 비교) */
 export async function analyzeFieldPrice(
   input: FieldPriceInput,
@@ -70,13 +91,7 @@ export async function analyzeFieldPrice(
     comparison: null,
   };
 
-  const produce = await supabase.rpc("search_produce_prices", {
-    search_query: name,
-    result_limit: 50,
-  });
-  const row = ((produce.data ?? []) as ProduceRow[]).find(
-    (r) => r.item_name === name,
-  );
+  const row = await findProduce(name);
   if (row) {
     const reference = {
       name: row.item_name,

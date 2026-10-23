@@ -51,6 +51,16 @@ const produceImages: Record<string, number> = {
   방울토마토: require("../../../assets/images/food/방울토마토.png"),
   시금치: require("../../../assets/images/food/시금치.png"),
   가지: require("../../../assets/images/food/가지.png"),
+
+  // 가격 데이터의 품목 이름이 사진 이름과 다른 경우 (같은 사진을 함께 씁니다)
+  붉은고추: require("../../../assets/images/food/고추.png"),
+  풋고추: require("../../../assets/images/food/고추.png"),
+  건고추: require("../../../assets/images/food/고추.png"),
+  "깐마늘(국산)": require("../../../assets/images/food/마늘.png"),
+  "깐마늘(수입)": require("../../../assets/images/food/마늘.png"),
+  피마늘: require("../../../assets/images/food/마늘.png"),
+  알배기배추: require("../../../assets/images/food/배추.png"),
+  얼갈이배추: require("../../../assets/images/food/배추.png"),
 };
 
 /** 사진이 없는 품목이면 undefined 를 돌려줍니다. */
