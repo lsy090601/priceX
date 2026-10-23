@@ -1,0 +1,18 @@
+:root { --green: #007529; --text: #111; --muted: #666; --line: #e5e5e5; --bg: #fff; }
+@media (prefers-color-scheme: dark) { :root { --text: #eee; --muted: #aaa; --line: #333; --bg: #111; --green: #3fb36b; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  line-height: 1.7; word-break: keep-all; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 48px 16px 64px; }
+.logo { color: var(--green); font-size: 32px; font-weight: 800; margin: 0; letter-spacing: 0.5px; }
+.tagline { margin: 4px 0 24px; color: var(--muted); }
+h1 { font-size: 26px; } h2 { font-size: 19px; margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line); }
+a { color: var(--green); }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 15px; }
+th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: rgba(0,117,41,0.08); }
+.status { color: var(--muted); font-size: 14px; }
+.links { display: flex; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
+.meta { color: var(--muted); font-size: 14px; }
+footer { margin-top: 40px; color: var(--muted); font-size: 14px; }
