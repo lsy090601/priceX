@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -54,6 +55,7 @@ export default function HomeScreen() {
       <FormMessage tone="error" message={error} />
 
       <View style={styles.actions}>
+        <PrimaryButton title="가격 예측 보기" onPress={() => router.push('/forecast')} />
         <PrimaryButton title="내 정보 새로고침" loading={refresh.submitting} onPress={handleRefresh} />
         <PrimaryButton
           title="로그아웃"
