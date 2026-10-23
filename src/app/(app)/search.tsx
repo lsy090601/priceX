@@ -131,7 +131,9 @@ export default function SearchScreen() {
       const ok = <T,>(
         r: PromiseSettledResult<{ data: T | null; error: unknown }>,
       ) =>
-        r.status === "fulfilled" && !r.value.error ? (r.value.data ?? []) : null;
+        r.status === "fulfilled" && !r.value.error
+          ? (r.value.data ?? [])
+          : null;
       const produceRows = ok<ProduceRow[]>(produce);
       const packagedRows = ok<PackagedRow[]>(packaged);
       const failed = produceRows === null && packagedRows === null;
@@ -190,7 +192,7 @@ export default function SearchScreen() {
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => saveRecent(keyword)}
-          placeholder="식자제 검색하기"
+          placeholder="식자재 검색하기"
           placeholderTextColor={Colors.textMuted}
           returnKeyType="search"
           autoFocus
