@@ -12,6 +12,14 @@ export type TrendForecast = {
   confidence: "low" | "medium" | "high";
 };
 
+export type ForecastChart = {
+  /** 지난 가격 몇 개 + 마지막 하나가 예상 가격 */
+  points: TrendPoint[];
+  /** points 에서 예상이 시작하는 위치 (마지막 점) */
+  forecastIndex: number;
+  summary: string;
+};
+
 export type TrendData = {
   kind: ProductKind;
   name: string;
@@ -24,6 +32,8 @@ export type TrendData = {
   seasons: SeasonValue[] | null;
   summary: string;
   forecast: TrendForecast | null;
+  /** 예상 탭에 보여줄 그래프. 예상 정보가 없으면 null */
+  forecastChart: ForecastChart | null;
 };
 
 type ProduceRow = {
@@ -123,6 +133,7 @@ function buildProduce(name: string, row: ProduceRow): TrendData {
     seasons: null,
     summary,
     forecast: null,
+    forecastChart: null,
   };
 }
 
@@ -133,12 +144,41 @@ const SEASONS: { label: string; months: number[] }[] = [
   { label: "겨울", months: [12, 1, 2] },
 ];
 
+const directionText: Record<TrendForecast["direction"], string> = {
+  up: "오를 가능성이 있어요",
+  stable: "비슷할 가능성이 커요",
+  down: "내릴 가능성이 있어요",
+};
+const confidenceText: Record<TrendForecast["confidence"], string> = {
+  low: "낮음",
+  medium: "보통",
+  high: "높음",
+};
+
+/**
+ * 예상 탭 그래프: 가장 최근 조사의 평균 가격과 예상 가격을 이어서 보여줍니다.
+ * (과거 이력 통계는 조사 시기와 기준이 달라서 이어 그리면 오해를 주기 때문에 쓰지 않습니다.)
+ */
+function buildForecastChart(
+  name: string,
+  current: { price: number; inspectedAt: string },
+  forecast: TrendForecast,
+): ForecastChart {
+  const points: TrendPoint[] = [
+    { label: ym(new Date(current.inspectedAt)), value: current.price },
+    { label: ym(new Date(forecast.predictedFor)), value: forecast.predictedPrice },
+  ];
+  const d = new Date(forecast.predictedFor);
+  const summary = `${name}의 가격은 ${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월에 ${forecast.predictedPrice.toLocaleString("ko-KR")}원 정도로 ${directionText[forecast.direction]} (신뢰도 ${confidenceText[forecast.confidence]})`;
+  return { points, forecastIndex: 1, summary };
+}
+
 /** 가공식품: 과거 평균 가격 이력(월별 통계)으로 그래프와 계절별 평균을 만듭니다. */
 function buildPackaged(
   name: string,
   history: HistoryRow[],
   forecast: TrendForecast | null,
-  currentAverage: number | null,
+  current: { price: number; inspectedAt: string } | null,
 ): TrendData {
   const rows = [...history].sort((a, b) =>
     a.inspected_at.localeCompare(b.inspected_at),
@@ -206,7 +246,8 @@ function buildPackaged(
   return {
     kind: "packaged",
     name,
-    price: currentAverage ?? last?.average_price ?? 0,
+    forecastChart: forecast && current ? buildForecastChart(name, current, forecast) : null,
+    price: current?.price ?? last?.average_price ?? 0,
     unitLabel: null,
     changePct: null,
     inspectedAt: lastAt,
@@ -250,8 +291,12 @@ export async function fetchTrend(
   if (rows.length === 0) throw new Error(`가격 이력이 없어요: ${name}`);
 
   const f = ((forecast.data ?? []) as ForecastRow[])[0];
-  const current = (
-    (average.data ?? []) as { product_name: string; average_price: number }[]
+  const currentRow = (
+    (average.data ?? []) as {
+      product_name: string;
+      average_price: number;
+      inspected_at: string;
+    }[]
   ).find((r) => r.product_name === name);
   return buildPackaged(
     name,
@@ -264,6 +309,8 @@ export async function fetchTrend(
           confidence: f.confidence,
         }
       : null,
-    current?.average_price ?? null,
+    currentRow
+      ? { price: currentRow.average_price, inspectedAt: currentRow.inspected_at }
+      : null,
   );
 }

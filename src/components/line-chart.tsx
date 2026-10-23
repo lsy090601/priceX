@@ -30,9 +30,12 @@ function niceStep(range: number, ticks: number) {
 export function LineChart({
   points,
   width,
+  forecastIndex,
 }: {
   points: ChartPoint[];
   width: number;
+  /** 이 위치부터는 예상 가격이라 점선으로 그립니다. */
+  forecastIndex?: number;
 }) {
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
@@ -55,9 +58,19 @@ export function LineChart({
   const y = (v: number) =>
     TOP_PAD + (HEIGHT - TOP_PAD) * (1 - (v - axisMin) / (axisMax - axisMin));
 
-  const line = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(i)} ${y(p.value)}`)
-    .join(" ");
+  const path = (from: number, to: number) =>
+    points
+      .slice(from, to + 1)
+      .map((p, k) => `${k === 0 ? "M" : "L"}${x(from + k)} ${y(p.value)}`)
+      .join(" ");
+  const hasForecast =
+    forecastIndex !== undefined &&
+    forecastIndex > 0 &&
+    forecastIndex < points.length;
+  const solidEnd = hasForecast ? forecastIndex - 1 : points.length - 1;
+  const line = path(0, points.length - 1);
+  const solidLine = path(0, solidEnd);
+  const dashedLine = hasForecast ? path(forecastIndex - 1, points.length - 1) : null;
   const area = `${line} L${x(points.length - 1)} ${HEIGHT} L${x(0)} ${HEIGHT} Z`;
 
   return (
@@ -82,7 +95,16 @@ export function LineChart({
           />
         ))}
         <Path d={area} fill="url(#area)" />
-        <Path d={line} stroke="#007529" strokeWidth={1.5} fill="none" />
+        <Path d={solidLine} stroke="#007529" strokeWidth={1.5} fill="none" />
+        {dashedLine && (
+          <Path
+            d={dashedLine}
+            stroke="#007529"
+            strokeWidth={1.5}
+            strokeDasharray="5 4"
+            fill="none"
+          />
+        )}
         {points.map((p, i) =>
           i === points.length - 1 ? (
             <Circle

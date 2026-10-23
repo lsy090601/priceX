@@ -21,7 +21,6 @@ import {
   fetchTrend,
   type SeasonValue,
   type TrendData,
-  type TrendForecast,
 } from "@/features/trend/trend-service";
 
 const icons = {
@@ -31,17 +30,6 @@ const icons = {
 };
 
 const won = (value: number) => `${Math.round(value).toLocaleString("ko-KR")}원`;
-
-const directionLabel: Record<TrendForecast["direction"], string> = {
-  up: "오를 가능성이 있어요",
-  stable: "비슷할 가능성이 커요",
-  down: "내릴 가능성이 있어요",
-};
-const confidenceLabel: Record<TrendForecast["confidence"], string> = {
-  low: "낮음",
-  medium: "보통",
-  high: "높음",
-};
 
 /**
  * Figma 160:1139 — 가격 추이 (그래프)
@@ -78,7 +66,7 @@ export default function TrendScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScreenHeader title="가격 추이" />
+      <ScreenHeader title={tab === "forecast" ? "가격 예측" : "가격 추이"} />
 
       {loading && <ActivityIndicator color={Colors.primary} style={styles.status} />}
       {!loading && !data && (
@@ -110,13 +98,11 @@ export default function TrendScreen() {
               selected={tab === "now"}
               onPress={() => setTab("now")}
             />
-            {data.forecast && (
-              <TabButton
-                label="예상"
-                selected={tab === "forecast"}
-                onPress={() => setTab("forecast")}
-              />
-            )}
+            <TabButton
+              label="예상"
+              selected={tab === "forecast"}
+              onPress={() => setTab("forecast")}
+            />
           </View>
 
           {tab === "now" ? (
@@ -150,20 +136,57 @@ export default function TrendScreen() {
                 </Text>
               )}
             </>
+          ) : data.forecastChart ? (
+            <>
+              <View style={styles.chart}>
+                <LineChart
+                  points={data.forecastChart.points}
+                  width={width - 40}
+                  forecastIndex={data.forecastChart.forecastIndex}
+                />
+              </View>
+              <Text style={styles.forecastHint}>점선 부분이 예상 가격이에요</Text>
+              <View style={styles.summary}>
+                <Image source={icons.mascot} style={styles.mascot} contentFit="cover" />
+                <View style={styles.summaryText}>
+                  <Text style={styles.summaryTitle}>AI 예측 경과</Text>
+                  <Text style={styles.summaryDesc}>
+                    {data.forecastChart.summary}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.date}>
+                예상가격은 공공 조사자료 기반 참고값이며 실제 매장 가격과 다를 수 있어요.
+              </Text>
+            </>
           ) : (
-            data.forecast && <ForecastCard forecast={data.forecast} />
+            <View style={styles.summary}>
+              <Image source={icons.mascot} style={styles.mascot} contentFit="cover" />
+              <View style={styles.summaryText}>
+                <Text style={styles.summaryTitle}>AI 예측 경과</Text>
+                <Text style={styles.summaryDesc}>
+                  {data.kind === "produce"
+                    ? "신선식품의 가격 예측은 가격 기록이 더 쌓이면 보여드릴게요."
+                    : "이 상품은 예측에 필요한 과거 가격 기록이 아직 부족해요."}
+                </Text>
+              </View>
+            </View>
           )}
 
-          <View style={styles.summary}>
-            <Image source={icons.mascot} style={styles.mascot} contentFit="cover" />
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryTitle}>가격 변화 요약</Text>
-              <Text style={styles.summaryDesc}>{data.summary}</Text>
-            </View>
-          </View>
-          <Text style={styles.date}>{data.inspectedAt} 기준</Text>
+          {tab === "now" && (
+            <>
+              <View style={styles.summary}>
+                <Image source={icons.mascot} style={styles.mascot} contentFit="cover" />
+                <View style={styles.summaryText}>
+                  <Text style={styles.summaryTitle}>가격 변화 요약</Text>
+                  <Text style={styles.summaryDesc}>{data.summary}</Text>
+                </View>
+              </View>
+              <Text style={styles.date}>{data.inspectedAt} 기준</Text>
 
-          {data.seasons && <Seasons seasons={data.seasons} />}
+              {data.seasons && <Seasons seasons={data.seasons} />}
+            </>
+          )}
         </ScrollView>
       )}
     </View>
@@ -204,23 +227,6 @@ function TabButton({
     >
       <Text style={[styles.tabText, selected && styles.tabTextOn]}>{label}</Text>
     </Pressable>
-  );
-}
-
-function ForecastCard({ forecast }: { forecast: TrendForecast }) {
-  const month = Number(forecast.predictedFor.slice(5, 7));
-  return (
-    <View style={styles.forecast}>
-      <Text style={styles.forecastLabel}>{month}월 예상 가격</Text>
-      <Text style={styles.forecastPrice}>{won(forecast.predictedPrice)}</Text>
-      <Text style={styles.forecastDesc}>
-        가격이 {directionLabel[forecast.direction]} (신뢰도{" "}
-        {confidenceLabel[forecast.confidence]})
-      </Text>
-      <Text style={styles.muted}>
-        예상가격은 공공 조사자료 기반 참고값이며 실제 매장 가격과 다를 수 있어요.
-      </Text>
-    </View>
   );
 }
 
@@ -345,26 +351,11 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
 
-  forecast: {
-    marginTop: 20,
-    gap: 10,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 10,
-  },
-  forecastLabel: { fontFamily: FontFamily.medium, fontSize: 14, color: "#757575" },
-  forecastPrice: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.primary,
-  },
-  forecastDesc: {
-    fontFamily: FontFamily.medium,
-    fontSize: 14,
-    fontWeight: "500",
-    color: Colors.black,
+  forecastHint: {
+    marginTop: 4,
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Colors.textMuted,
   },
 
   summary: {
