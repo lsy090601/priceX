@@ -1,0 +1,26 @@
+name: Sync public prices
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 22 14 * *'
+permissions:
+  contents: read
+concurrency:
+  group: sync-prices
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
+      - run: python scripts/sync_prices.py
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          CHAMGAGE_API_URL: ${{ vars.CHAMGAGE_API_URL }}
