@@ -1,6 +1,41 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+/ios
+/android
+
+# Metro and logs
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# local environment files
 .env
+.env*.local
+!.env.example
+
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
 data/*.json
 
+# TypeScript and OS files
+*.tsbuildinfo
+.DS_Store
+*.pem
