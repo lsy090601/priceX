@@ -21,12 +21,28 @@ const icons = {
 };
 
 type SearchResult = {
-  product_name: string;
-  average_price: number;
-  min_price: number;
-  max_price: number;
-  store_count: number;
+  item_name: string;
+  variety_name: string;
+  grade_name: string;
+  unit: string;
+  unit_size: number;
+  inspected_at: string;
+  price: number;
+  change_pct_1w: number | null;
 };
+
+// 조사일이 이보다 오래된 품목(제철이 아닌 과일 등)은 날짜를 같이 보여줍니다.
+const STALE_DAYS = 14;
+
+function isStale(inspectedAt: string) {
+  const days = (Date.now() - new Date(inspectedAt).getTime()) / 86_400_000;
+  return days > STALE_DAYS;
+}
+
+function formatDate(inspectedAt: string) {
+  const [, month, day] = inspectedAt.split("-");
+  return `${Number(month)}월 ${Number(day)}일`;
+}
 
 const MAX_RECENT = 5;
 
@@ -63,7 +79,7 @@ export default function SearchScreen() {
       let rows: SearchResult[] = [];
       try {
         const { data, error: rpcError } = await requireSupabase().rpc(
-          "search_price_products",
+          "search_produce_prices",
           { search_query: keyword, result_limit: 20 },
         );
         if (rpcError) failed = true;
@@ -148,28 +164,49 @@ export default function SearchScreen() {
 
       <FlatList
         data={results}
-        keyExtractor={(item) => item.product_name}
+        keyExtractor={(item) => item.item_name}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => saveRecent(item.product_name)}
-          >
-            <View style={styles.thumb} />
-            <View style={styles.info}>
-              <Text style={styles.name} numberOfLines={1}>
-                {item.product_name}
-              </Text>
-              <View style={styles.priceRow}>
-                <Text style={styles.price}>
-                  {item.average_price.toLocaleString("ko-KR")}원
-                </Text>
-                <Text style={styles.avg}>평균</Text>
+        renderItem={({ item }) => {
+          const change = item.change_pct_1w;
+          const up = change !== null && change > 0;
+          const down = change !== null && change < 0;
+          return (
+            <Pressable
+              style={styles.card}
+              onPress={() => saveRecent(item.item_name)}
+            >
+              <View style={styles.thumb} />
+              <View style={styles.info}>
+                <View style={styles.nameBlock}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.item_name}
+                  </Text>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.price}>
+                      {item.price.toLocaleString("ko-KR")}원
+                    </Text>
+                    <Text style={styles.avg}>
+                      {item.unit_size}
+                      {item.unit} 평균
+                    </Text>
+                  </View>
+                </View>
+                {(up || down) && (
+                  <Text style={[styles.change, down && styles.changeDown]}>
+                    {up ? "▲" : "▼"} {Math.abs(change)}%{" "}
+                    {up ? "올라갔어요" : "내려갔어요"}
+                  </Text>
+                )}
+                {isStale(item.inspected_at) && (
+                  <Text style={styles.stale}>
+                    {formatDate(item.inspected_at)} 기준
+                  </Text>
+                )}
               </View>
-            </View>
-          </Pressable>
-        )}
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -257,7 +294,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: "#bcbcbc",
   },
-  info: { flex: 1, gap: 10 },
+  info: { flex: 1, gap: 12 },
+  nameBlock: { gap: 10 },
   name: {
     fontFamily: FontFamily.medium,
     fontSize: 16,
@@ -272,6 +310,18 @@ const styles = StyleSheet.create({
     color: Colors.black,
   },
   avg: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  change: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#ff3333",
+  },
+  changeDown: { color: "#2f6fed" },
+  stale: {
     fontFamily: FontFamily.regular,
     fontSize: 12,
     color: Colors.textMuted,
