@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenHeader } from "@/components/screen-header";
@@ -22,12 +22,7 @@ export default function FieldPriceScreen() {
       <View style={styles.body}>
         <Pressable
           style={styles.option}
-          onPress={() =>
-            Alert.alert(
-              "사진으로 등록하기",
-              "가격표 사진을 읽는 기능은 준비 중이에요. 지금은 직접 등록하기를 이용해주세요.",
-            )
-          }
+          onPress={() => router.push("/field-price-camera")}
           accessibilityRole="button"
         >
           <Image source={icons.camera} style={styles.icon} contentFit="contain" />

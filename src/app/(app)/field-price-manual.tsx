@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -35,10 +35,30 @@ function onlyNumber(text: string, allowDecimal: boolean) {
 /** Figma 201:2266 — 현장 가격 입력하기 (직접 등록) */
 export default function FieldPriceManualScreen() {
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [amount, setAmount] = useState("");
-  const [unit, setUnit] = useState<string | null>(null);
+  // 사진으로 등록하기에서 읽은 값이 있으면 미리 채워 둡니다.
+  const prefill = useLocalSearchParams<{
+    from?: string;
+    name?: string;
+    price?: string;
+    amount?: string;
+    unit?: string;
+  }>();
+  const fromPhoto = prefill.from === "photo";
+  const [name, setName] = useState(
+    typeof prefill.name === "string" ? prefill.name : "",
+  );
+  const [price, setPrice] = useState(
+    typeof prefill.price === "string" ? onlyNumber(prefill.price, false) : "",
+  );
+  const [amount, setAmount] = useState(
+    typeof prefill.amount === "string" ? onlyNumber(prefill.amount, true) : "",
+  );
+  const [unit, setUnit] = useState<string | null>(
+    typeof prefill.unit === "string" &&
+      (FIELD_UNITS as readonly string[]).includes(prefill.unit)
+      ? prefill.unit
+      : null,
+  );
   const [unitOpen, setUnitOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -100,6 +120,12 @@ export default function FieldPriceManualScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {fromPhoto && (
+            <Text style={styles.photoNote}>
+              사진에서 읽은 내용이에요. 맞는지 확인하고 고쳐주세요.
+            </Text>
+          )}
+
           <Field label="식재료 이름">
             <TextInput
               style={styles.input}
@@ -214,6 +240,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.white },
   body: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 30, gap: 30 },
 
+  photoNote: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    fontWeight: "500",
+    color: Colors.primary,
+  },
   field: { gap: 10 },
   label: { fontFamily: FontFamily.regular, fontSize: 14, color: "#b5b5b5" },
   input: {

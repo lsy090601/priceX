@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import { ProductThumb } from "@/components/product-thumb";
 import { ScreenHeader } from "@/components/screen-header";
 import { Colors, FontFamily } from "@/constants/theme";
 import { listCart } from "@/features/cart/cart-service";
+import { saveChecklistFromPlan } from "@/features/checklist/checklist-service";
 import {
   computePlan,
   loadPlanSources,
@@ -45,6 +47,7 @@ export default function PlanScreen() {
     | { status: "ready"; sources: PlanSource[] }
   >({ status: "loading" });
   const [storeType, setStoreType] = useState<StoreType>("mart");
+  const [deciding, setDeciding] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +75,26 @@ export default function PlanScreen() {
       pathname: "/store-guide",
       params: { store: line.storeName, items: names.join(", ") },
     });
+  };
+
+  // "결정하기": 추천받은 조합을 장보기 리스트(체크리스트)에 저장합니다.
+  const decide = async () => {
+    if (!plan || deciding) return;
+    setDeciding(true);
+    try {
+      await saveChecklistFromPlan(plan.lines);
+      router.push("/plan-done");
+    } catch (error) {
+      const noItems = error instanceof Error && error.message.includes("담을 품목");
+      Alert.alert(
+        "결정하기",
+        noItems
+          ? "가격을 알 수 있는 품목이 없어서 리스트에 담을 수 없어요."
+          : "장보기 리스트에 저장하지 못했어요. 잠시 후 다시 시도해주세요.",
+      );
+    } finally {
+      setDeciding(false);
+    }
   };
 
   const hasProduce = plan?.lines.some((l) => l.status === "average");
@@ -178,8 +201,9 @@ export default function PlanScreen() {
               <Text style={styles.buttonText}>다시하기</Text>
             </Pressable>
             <Pressable
-              style={[styles.button, styles.buttonGreen]}
-              onPress={() => router.push("/plan-done")}
+              style={[styles.button, styles.buttonGreen, deciding && styles.buttonBusy]}
+              onPress={decide}
+              disabled={deciding}
               accessibilityRole="button"
             >
               <Text style={styles.buttonText}>결정하기</Text>
@@ -407,6 +431,7 @@ const styles = StyleSheet.create({
   },
   buttonGray: { backgroundColor: "#b0b0b0" },
   buttonGreen: { backgroundColor: Colors.primary },
+  buttonBusy: { opacity: 0.6 },
   buttonText: {
     fontFamily: FontFamily.medium,
     fontSize: 16,

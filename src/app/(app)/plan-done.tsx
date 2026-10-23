@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenHeader } from "@/components/screen-header";
@@ -46,11 +46,7 @@ export default function PlanDoneScreen() {
 
           <Pressable
             style={styles.button}
-            onPress={() => {
-              // 장보기 리스트(체크리스트) 화면이 아직 없어서, 안내 후 홈으로 돌아갑니다.
-              Alert.alert("장보기 리스트", "장보기 리스트는 준비 중이에요.");
-              router.replace("/");
-            }}
+            onPress={() => router.replace("/checklist")}
             accessibilityRole="button"
           >
             <Image

@@ -9,7 +9,8 @@ import { useAuth } from "@/features/auth/auth-provider";
 const icons = {
   homeActive: require("../../assets/images/home/nav-home.png"),
   homeInactive: require("../../assets/images/cart/nav-home-gray.svg"),
-  checklist: require("../../assets/images/home/nav-checklist.png"),
+  checklistActive: require("../../assets/images/cart/nav-checklist-active.svg"),
+  checklistInactive: require("../../assets/images/home/nav-checklist.png"),
   cartActive: require("../../assets/images/cart/nav-cart-active.svg"),
   cartInactive: require("../../assets/images/home/nav-cart.png"),
   user: require("../../assets/images/home/nav-user.png"),
@@ -47,12 +48,10 @@ export function TabBar({ active }: { active: TabKey }) {
       />
       <TabItem
         label="체크리스트"
-        icon={icons.checklist}
+        icon={active === "checklist" ? icons.checklistActive : icons.checklistInactive}
         active={active === "checklist"}
         iconSize={{ width: 30, height: 30 }}
-        onPress={() =>
-          Alert.alert("체크리스트", "장보기 체크리스트는 준비 중이에요.")
-        }
+        onPress={() => active !== "checklist" && router.replace("/checklist")}
       />
       <TabItem
         label="장바구니"
