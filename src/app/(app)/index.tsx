@@ -119,7 +119,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
           <Text style={styles.sectionDesc}>
-            오늘의 인기 식자제 가격을 비교해보세요
+            오늘의 인기 식자재 가격을 비교해보세요
           </Text>
         </View>
 
