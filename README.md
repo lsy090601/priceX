@@ -87,11 +87,11 @@ supabase/drafts/            # 실행 전 검토할 SQL 초안
 
 ## AI 구매 조언
 
-AI 조언은 `Expo 앱 → Supabase Edge Function → OpenAI Responses API` 순서로 호출합니다.
-OpenAI 키는 앱 환경 변수에 넣지 않고 Supabase 프로젝트의 Edge Function Secret으로 설정합니다.
+AI 조언은 `Expo 앱 → Supabase Edge Function → Gemini API` 순서로 호출합니다.
+Gemini 키는 앱 환경 변수에 넣지 않고 Supabase 프로젝트의 Edge Function Secret으로 설정합니다.
 
 ```bash
-npx supabase secrets set OPENAI_API_KEY=your_key OPENAI_MODEL=gpt-6-luna
+npx supabase secrets set GEMINI_API_KEY=your_key GEMINI_MODEL=gemini-3.8-flash
 npx supabase functions deploy purchase-advice
 ```
 

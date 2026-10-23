@@ -22,32 +22,11 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function readOutputText(response: Record<string, unknown>): string | null {
-  const output = Array.isArray(response.output) ? response.output : [];
-  for (const item of output) {
-    if (!item || typeof item !== 'object' || !('content' in item)) continue;
-    const content = Array.isArray(item.content) ? item.content : [];
-    for (const part of content) {
-      if (
-        part &&
-        typeof part === 'object' &&
-        'type' in part &&
-        part.type === 'output_text' &&
-        'text' in part &&
-        typeof part.text === 'string'
-      ) {
-        return part.text;
-      }
-    }
-  }
-  return null;
-}
-
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
 
-  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) return jsonResponse({ error: 'AI service is not configured' }, 503);
 
   let facts: AdviceFacts;
@@ -67,52 +46,54 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
-  const openAIResponse = await fetch('https://api.openai.com/v1/responses', {
+  const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.8-flash';
+  const geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      'x-goog-api-key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: Deno.env.get('OPENAI_MODEL') || 'gpt-6-luna',
-      store: false,
-      reasoning: { effort: 'none' },
-      instructions: [
-        '당신은 한국의 장보기 가격 조언 도우미입니다.',
-        '입력된 계산 결과만 사용해 친절하고 간결한 한국어로 설명하세요.',
-        '가격, 비율, 날짜, 상품명, 판매점명은 절대 변경하거나 새로 만들지 마세요.',
-        '미래 가격을 예측하지 말고 확정적인 절약을 보장하지 마세요.',
-        '조사일이 지난 데이터일 수 있으므로 실제 매장 가격 확인을 안내하세요.',
-      ].join(' '),
-      input: JSON.stringify(facts),
-      max_output_tokens: 500,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'purchase_advice',
-          strict: true,
-          schema: {
-            type: 'object',
-            properties: {
-              title: { type: 'string' },
-              summary: { type: 'string' },
-              actions: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['title', 'summary', 'actions'],
-            additionalProperties: false,
+      systemInstruction: {
+        parts: [{
+          text: [
+            '당신은 한국의 장보기 가격 조언 도우미입니다.',
+            '입력된 계산 결과만 사용해 친절하고 간결한 한국어로 설명하세요.',
+            '가격, 비율, 날짜, 상품명, 판매점명은 절대 변경하거나 새로 만들지 마세요.',
+            '미래 가격을 예측하지 말고 확정적인 절약을 보장하지 마세요.',
+            '조사일이 지난 데이터일 수 있으므로 실제 매장 가격 확인을 안내하세요.',
+          ].join(' '),
+        }],
+      },
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify(facts) }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            summary: { type: 'string' },
+            actions: { type: 'array', items: { type: 'string' } },
           },
+          required: ['title', 'summary', 'actions'],
+          additionalProperties: false,
         },
+        maxOutputTokens: 500,
       },
     }),
   });
 
-  const responseBody = (await openAIResponse.json()) as Record<string, unknown>;
-  if (!openAIResponse.ok) {
-    console.error('OpenAI request failed', openAIResponse.status, responseBody);
+  const responseBody = await geminiResponse.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  if (!geminiResponse.ok) {
+    console.error('Gemini request failed', geminiResponse.status, responseBody);
     return jsonResponse({ error: 'AI advice generation failed' }, 502);
   }
 
-  const outputText = readOutputText(responseBody);
+  const outputText = responseBody.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!outputText) return jsonResponse({ error: 'AI returned no text' }, 502);
 
   try {

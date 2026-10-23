@@ -8,7 +8,7 @@ import {
 } from './purchase-advice';
 
 export type AiPurchaseAdvice = PurchaseAdvice & {
-  source: 'openai' | 'rules';
+  source: 'gemini' | 'rules';
 };
 
 type AiAdviceText = {
@@ -59,7 +59,7 @@ export async function createAiShoppingAdvice({
       advice: {
         ...base.advice,
         ...data.advice,
-        source: 'openai',
+        source: 'gemini',
       },
     };
   } catch {
